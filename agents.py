@@ -2,58 +2,10 @@
 # The langchain sql chain has knowledge of the database, but doesn't interact with it becond intialization.
 # The output of the sql chain is parsed seperately and passed to `duckdb.sql()` by streamlit
 
-import os
-os.environ["WEBSOCKET_TIMEOUT_MS"] = "300000" # no effect
-
 import streamlit as st
+import leafmap.foliumap as leafmap
 import geopandas as gpd
 from shapely import wkb
-import leafmap.foliumap as leafmap
-
-import pydeck as pdk
-def deck_map(gdf):
-    st.write(
-        pdk.Deck(
-            map_style="mapbox://styles/mapbox/light-v9",
-            initial_view_state={
-                "latitude": 35,
-                "longitude": -100,
-                "zoom": 3,
-                "pitch": 50,
-            },
-            layers=[
-                pdk.Layer(
-                    "GeoJsonLayer",
-                    gdf,
-                    pickable=True,
-                    stroked=True,
-                    filled=True,
-                    extruded=True,
-                    elevation_scale=10,
-                    get_fill_color=[2, 200, 100],
-                    get_line_color=[0,0,0],
-                    line_width_min_pixels=0,
-                ),
-            ],
-        )
-    )
-
-def leaf_map(gdf):
-    m = leafmap.Map(center=[35, -100], zoom=4, layers_control=True)
-    m.add_gdf(gdf)
-    return m.to_streamlit()
-
-
-@st.cache_data
-def query_database(response):
-    return con.sql(response).to_pandas().head(25)
-
-@st.cache_data
-def get_geom(tbl):
-    tbl['geometry'] = tbl['geometry'].apply(wkb.loads)
-    gdf = gpd.GeoDataFrame(tbl, geometry='geometry')
-    return gdf
-
 
 ## Database connection
 from sqlalchemy import create_engine
@@ -97,7 +49,6 @@ with st.sidebar:
 from langchain.chains import create_sql_query_chain
 chain = create_sql_query_chain(llm, db)
 
-
 main = st.container()
 
 ## Does not preserve history
@@ -107,13 +58,30 @@ with main:
         with st.chat_message("assistant"):
             response = chain.invoke({"question": prompt})
             st.write(response)
-            tbl = query_database(response)
-            if 'geometry' in tbl:
-                gdf = get_geom(tbl)
-                leaf_map(gdf)
-                n = len(gdf)
-                st.write(f"matching features: {n}")
-            st.dataframe(tbl)
+            tbl = con.sql(response).to_pandas()
+            st.dataframe(dt)
+
+# agent works only with open-ai.  needs to be told what table to use
+from langchain.agents import create_sql_agent
+from langchain_community.callbacks import StreamlitCallbackHandler
+
+# codegemma -- we need different parser to extract the SQL part of the query
+agent = create_sql_agent(llm, db=db, verbose=True)
+# agent = create_sql_agent(llm, db=db, agent_type="openai-tools", verbose=True)
+
+section = st.container()
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+with section:
+    if user_query := st.chat_input():
+        st.session_state.messages.append({"role": "user", "content": user_query})
+        # st.chat_message("user").write(user_query)
+        with st.chat_message("assistant"):
+            st_cb = StreamlitCallbackHandler(st.container())
+            response = agent.run(user_query, callbacks=[st_cb])
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.write(response)
 
 
 

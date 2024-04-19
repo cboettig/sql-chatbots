@@ -33,7 +33,13 @@ chatgpt4_llm = ChatOpenAI(model="gpt-4", temperature=0, api_key=st.secrets["OPEN
 from langchain_community.llms import Ollama
 ## # from langchain_community.llms import ChatOllama
 
-models = {"duckdb-nsql": Ollama(model="duckdb-nsql", temperature=0),
+models = {
+          "command-r-plus": Ollama(model="command-r-plus", temperature=0),
+          "llama3:70b": Ollama(model="llama2:70b", temperature=0),
+          "dbrx": Ollama(model="dbrx", temperature=0),
+          "mixtral:8x22b":  Ollama(model="mixtral:8x22b", temperature=0),
+          "wizardlm2:8x22b":  Ollama(model="wizardlm2:8x22b", temperature=0),
+          "duckdb-nsql": Ollama(model="duckdb-nsql", temperature=0),
           "sqlcoder": Ollama(model="sqlcoder", temperature=0),
           "zephyr": Ollama(model="zephyr", temperature=0),
           "gemma:7b": Ollama(model="gemma:7b", temperature=0),

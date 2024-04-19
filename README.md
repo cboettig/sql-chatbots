@@ -48,4 +48,4 @@ provide a duckdb database file or alter the app.py to read directly from parquet
 streamlit run app.py
 ```
 
-![](![screenshot of app](img/screenshot.png))
+![screenshot of app](img/screenshot.png)
